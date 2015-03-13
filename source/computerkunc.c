@@ -170,6 +170,87 @@ void ComputeRk2( FILE *file1, double omega, int nz, double dz,double qg, double 
            }         
 
 }
+
+void ComputeRk3( FILE *file1, double omega, int nz, double dz,double qg, double k0,double kg, double *gamma,double *den,double *beltad,double *vel, double *Rk,double* Pk1Re,double* Pk1Im,double* PkRe,double* PkIm ){
+  int iz,iz2;
+  double kp2;
+  double k02=k0*k0;
+  double kg2=kg*kg;
+  double qg2=qg*qg;
+  double z=0.0 ;
+  double I1temp[2], I2temp[2], Exptem1[2];
+  double I1int[2], I2int[2];
+  double Rkn[2], Rkd[2];
+
+  double  Pk1Retemp, Pk1Imtemp, I1re,I1im,I2re,I2im;
+  double* Pk1dzRe = malloc(nz*sizeof(double));
+  double* Pk1dzIm = malloc(nz*sizeof(double));
+
+
+     FILE* file2;
+     char fname2[100];
+
+     //sprintf(fname2,"rktk_.dat" );
+     //file2 = fopen(fname2,"w");
+        
+     for(iz=0;iz<nz;iz++){
+		z = iz*dz;
+                if(iz<3){
+                	Pk1Re[iz]=cos(qg*z);
+                	Pk1Im[iz]=sin(qg*z);
+			Pk1dzRe[iz]=-qg*beltad[iz]*sin(qg*z);
+                	Pk1dzIm[iz]=-qg*beltad[iz]*cos(qg*z);
+          	}else{
+			Pk1dzRe[iz-1]=beltad[iz-1]*(Pk1Re[iz-1]-Pk1Re[iz-2])/dz;
+                	Pk1dzIm[iz-1]=beltad[iz-1]*(Pk1Im[iz-1]-Pk1Im[iz-2])/dz;
+			
+                	Pk1Re[iz]=cos(qg*z);
+               		Pk1Im[iz]=sin(qg*z);
+                	for(iz2=1;iz2<iz;iz2++){
+				kp2=omega*omega/vel[iz2]/vel[iz2];
+                		Pk1Retemp=dz*sin(qg*(iz-iz2)*dz)*((k02*gamma[iz2])*Pk1Re[iz2]+den[iz2]/den[0]*Pk1dzRe[iz2])/qg;
+                		Pk1Imtemp=dz*sin(qg*(iz-iz2)*dz)*((k02*gamma[iz2])*Pk1Im[iz2]+den[iz2]/den[0]*Pk1dzIm[iz2])/qg;
+                		Pk1Re[iz]+=Pk1Retemp;
+                		Pk1Im[iz]+=Pk1Imtemp;
+						
+                	}
+		}
+	}
+
+	I1re=0;
+        I1im=0;
+	I2re=0;
+        I2im=0;
+        for(iz=1;iz<nz-1;iz++){
+		z=iz*dz;
+		kp2=omega*omega/vel[iz]/vel[iz];
+        	I1temp[0]=(k02*gamma[iz])*Pk1Re[iz]+den[iz]/den[0]*Pk1dzRe[iz];
+        	I1temp[1]=(k02*gamma[iz])*Pk1Im[iz]+den[iz]/den[0]*Pk1dzIm[iz];
+		I2temp[0]=I1temp[0];
+        	I2temp[1]=-I1temp[1];
+        	Exptem1[0]=cos(qg*z);
+        	Exptem1[1]=sin(qg*z);
+        	prodcomp(I1temp,Exptem1,I1int);
+		prodcomp(I2temp,Exptem1,I2int);
+        	I1re+=I1int[0]*dz;
+        	I1im+=I1int[1]*dz;
+		I2re+=I2int[0]*dz;
+        	I2im+=I2int[1]*dz;
+                	
+        }
+          // compute Rk
+          Rkn[0]=I1im/2/qg;
+          Rkn[1]=-I1re/2/qg;
+          Rkd[0]=1-I2im/2/qg;
+          Rkd[1]=I2re/2/qg;
+          divcomp(Rkn,Rkd,Rk);
+	  for(iz=0;iz<nz;iz++){
+		PkRe[iz]=Pk1Re[iz]+Rk[0]*Pk1Re[iz]+Rk[1]*Pk1Im[iz];
+                PkIm[iz]=Pk1Im[iz]+Rk[1]*Pk1Re[iz]-Rk[0]*Pk1Im[iz];	
+                	
+           }         
+
+}
 // Compute Rk
 // we suppose V is cst after zmax
 

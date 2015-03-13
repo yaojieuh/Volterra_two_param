@@ -26,7 +26,7 @@ void init_acou_layer_velocity(FILE *filefprintf, double dx, double dz, int nx, i
  int ix, iz;
  double x,z;
  
- int nzl1= 40, nzl2=70;
+ int nzl1= 30, nzl2=70;
 
 
 
@@ -43,7 +43,7 @@ void init_acou_layer_velocity(FILE *filefprintf, double dx, double dz, int nx, i
 				
 	}
 	else if (iz<nzl2){
-                vel[iz]=2000;
+                vel[iz]=1500;
                  
 	}
 	else{

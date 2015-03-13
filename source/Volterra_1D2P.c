@@ -22,9 +22,7 @@ int main( int argc, char *argv[] )
   // grids dimensions 
   int nz    = 101; 
   int nx    = 401,nx2=(nx-1)/2;
-  int ndims = nx*nz;       // total grid points number
-
-
+  int ndims = nx*nz;      
 
   // physical grid size
   double dz = 5.0;     // modeling grid spacial step in z
@@ -37,23 +35,39 @@ int main( int argc, char *argv[] )
   sprintf(fname1,"test_1D_2P_acoustic.out");
   file1 = fopen(fname1,"w");
 
-
   fprintf(file1, "--!\t                                     \n");
   fprintf(file1, "--!\t1D acoustic Volterra modeling research code\n");
   fprintf(file1, "--!\t                                     \n");
 
   ret = fflush(file1);
 
-  // velocity field
-  double c0=1500; //reference velocity
+  const char * NameWeekDay[] = {"Sunday", "Monday", "Tuesday", "Wenesday", "Thursday", "Friday", "Saturday"};
+  time_t timestamp;
+  struct tm * tc;
+    
+  timestamp = time(NULL);
+  tc = localtime(&timestamp);
+  fprintf(file1,"--!\t                                     \n");
+  fprintf(file1,"--!\tStart Time : %s, ", NameWeekDay[tc->tm_wday]);
+  fprintf(file1,"%02u/%02u/%04u, ", tc->tm_mon+1, tc->tm_mday, 1900 + tc->tm_year);
+  fprintf(file1,"Clock : %02uh %02umn %02usec.\n", tc->tm_hour, tc->tm_min, tc->tm_sec);
+
+  ret = fflush(file1);
+
+  //velocity & density initinalizaiton
+  double c0=1500; 
   double rho0=1;
   double bulk0=c0*c0*rho0;
+
   double* vel  = malloc( nz*sizeof(double) );
-  init_acou_layer_velocity(file1,  dx,dz,nx,nz, c0, vel);   
+  init_acou_layer_velocity(file1,  dx,dz,nx,nz, c0, vel); 
+  
   double* den  = malloc( nz*sizeof(double) );
   init_acou_layer_density(file1, dx,dz,nx,nz,rho0,den);
+
   double* alpha  = malloc( nz*sizeof(double) );
   double* belta  = malloc( nz*sizeof(double) );
+  double* gamma  = malloc( nz*sizeof(double) );
   double* beltad  = malloc( nz*sizeof(double) );
   FILE* file2;  
   char fname2[100];
@@ -61,24 +75,29 @@ int main( int argc, char *argv[] )
   file2 = fopen(fname2,"w");
   int ix,iz;
   double bulk;
+
   for (iz=0;iz<nz;iz++){
 	bulk=vel[iz]*vel[iz]*den[iz];
 	alpha[iz]=1-bulk0/bulk;
 	belta[iz]=1-rho0/den[iz];
-	
-        fprintf(file2," %d  %.12lf %.12lf \n",iz, alpha[iz],belta[iz]);
-                          	
+	gamma[iz]=1-c0*c0/vel[iz]/vel[iz];
+        fprintf(file2," %d  %.12lf %.12lf %.12lf \n",iz, alpha[iz],belta[iz],gamma[iz]);                         	
   }
-   fclose(file2);
-	beltad[0]=0;
-    for (iz=1;iz<nz;iz++){	
+  fclose(file2);
+
+  beltad[0]=0;
+  for (iz=1;iz<nz;iz++){	
 	beltad[iz]=(belta[iz]-belta[iz-1])/dz;	                          	
-   }	
-   // time and frequency discretization parameter
+   }
+
+	
+  // time and frequency discretization parameter
   int   nt = 1000;        // number of steps
   double dt = 0.001;      // time step
+
   int nw=151;
   double dw=2;
+
   double* sourcet = malloc(nt*sizeof(double) );
   double* sourcefren  = malloc( (2*nw)*sizeof(double) );
   double* fren  = malloc( nw*sizeof(double) );
@@ -131,7 +150,8 @@ int main( int argc, char *argv[] )
 		if (qg2>0){
 			qg=sqrt(qg2);
 			//ComputeRk( file1, nz, dz, qg,  k0, kg,alpha,belta,Rk,Pk1Re, Pk1Im, PkRe, PkIm );
-			ComputeRk2(file1, omega,nz,  dz, qg,  k0, kg,alpha,belta,beltad,vel, Rk, Pk1Re, Pk1Im, PkRe, PkIm );
+			//ComputeRk2(file1, omega,nz,  dz, qg,  k0, kg,alpha,belta,beltad,vel, Rk, Pk1Re, Pk1Im, PkRe, PkIm );
+                        ComputeRk3(file1, omega,nz,  dz, qg,  k0, kg,gamma,den,beltad,vel, Rk, Pk1Re, Pk1Im, PkRe, PkIm );
 			Rkr[iw*nkg+ik]=Rk[0];
 			Rki[iw*nkg+ik]=Rk[1];
 			for(iz=0;iz<nz;iz++){
@@ -140,10 +160,10 @@ int main( int argc, char *argv[] )
                 		Pk1TIm[index]=+Pk1Re[iz]*rho0/2/qg;
 				PkTRe[index]= PkIm[iz]*rho0/2/qg;
                 		PkTIm[index]= +PkRe[iz]*rho0/2/qg;
-				//Pk1TRe[index]=Pk1Re[iz];
-                		//Pk1TIm[index]=Pk1Im[iz];
-				//PkTRe[index]= PkRe[iz];
-                		//PkTIm[index]= PkIm[iz];
+				/*Pk1TRe[index]=Pk1Re[iz];
+                		Pk1TIm[index]=Pk1Im[iz];
+				PkTRe[index]= PkRe[iz];
+                		PkTIm[index]= PkIm[iz];*/
 			}
 			
 			
